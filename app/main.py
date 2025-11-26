@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Response, status
+from typing import Optional
 from datetime import datetime
-from .database.models import SensorIn, SensorOut
+from .database.models import SensorIn, SensorOut, SensorWithMeasurements
 
 app = FastAPI()
 
@@ -36,3 +37,32 @@ def add_new_sensor(sensor_in : SensorIn):
 def get_all_sensors():
     return sensors
 
+@app.get("/sensors/{sensor_id}", response_model=SensorWithMeasurements)
+def get_sensordata_by_id(sensor_id: int, limit: int = 10, start: Optional[datetime] = None, end: Optional[datetime] = None):
+    #Haetaan sensori
+    sensor = next(s for s in sensors if s ["id"] == sensor_id)
+    if len(sensor) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f'sensor by id {sensor_id} not found.'
+        )
+    #Haetaan tälle sensorille mittaukset
+    sensor_measurements = [
+        m for m in measurements if m["sensor_id"] == sensor_id
+    ]
+    #Jos start ja end annettu -> filtteröidään aikavälillä
+    if start is not None and end is not None:
+        sensor_measurements = [
+            m for m in measurements if start <= m["timestamp"] <= end
+        ]
+    else:
+        #Muuten uusimmat "limit" mittausta
+        sensor_measurements = sorted(
+            sensor_measurements,
+            key=lambda m: m["timestamp"],
+            reverse=True
+        )[:limit]
+
+    return SensorWithMeasurements(
+        **sensor,
+        measurements=sensor_measurements,
+    )
