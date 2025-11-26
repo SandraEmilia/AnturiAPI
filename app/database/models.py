@@ -27,3 +27,14 @@ class StatuschangesBase(BaseModel):
 
 class SensorWithMeasurements(SensorBase):
     measurements: list[MeasurementBase]
+
+class SensorStatusUpdate(BaseModel):
+    status: str
+
+class SensorSectionUpdate(BaseModel):
+    section: str
+
+class ErrorEvent(BaseModel):
+    sensor_id : int
+    timestamp: datetime
+    
