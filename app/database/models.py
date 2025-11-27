@@ -37,4 +37,11 @@ class SensorSectionUpdate(BaseModel):
 class ErrorEvent(BaseModel):
     sensor_id : int
     timestamp: datetime
+
+class SensorBySection(BaseModel):
+    id: int
+    section: str
+    status: str
+    last_temperature: float | None
+    last_timestamp: datetime | None
     
