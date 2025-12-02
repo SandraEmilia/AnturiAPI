@@ -1,7 +1,9 @@
-from pydantic import BaseModel
+from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
+from typing import Optional, List
 
-class SensorBase(BaseModel):
+
+class SensorBase(SQLModel):
     name: str
     section: str
     status: str
@@ -9,36 +11,51 @@ class SensorBase(BaseModel):
 class SensorIn(SensorBase):
     pass
 
-class SensorOut(SensorBase):
-    id: int
+class SensorOut(SensorBase, table=True):
+    __tablename__ = "sensor"
+    id: int | None = Field(default=None, primary_key=True)
 
-class MeasurementBase(BaseModel):
-    id: int
-    sensor_id: int
+class MeasurementBase(SQLModel):
     temperature: float
     timestamp: datetime
 
-class StatuschangesBase(BaseModel):
+class MeasurementIn(SQLModel):
+    sensor_id: int
+    temperature: float
+    timestamp: datetime | None = None
+    
+class Measurement(MeasurementBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    sensor_id: int = Field(foreign_key="sensor.id")
+
+class MeasurementOut(MeasurementBase):
     id: int
     sensor_id: int
+
+class StatuschangesBase(SQLModel):
     old_status: str
     new_status: str
     timestamp: datetime
 
-class SensorWithMeasurements(SensorBase):
-    measurements: list[MeasurementBase]
+class StatusChange(StatuschangesBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    sensor_id: int = Field(foreign_key="sensor.id")
 
-class SensorStatusUpdate(BaseModel):
+class SensorWithMeasurements(SensorBase):
+    id: int
+    measurements: list[MeasurementOut]
+
+class SensorStatusUpdate(SQLModel):
     status: str
 
-class SensorSectionUpdate(BaseModel):
+class SensorSectionUpdate(SQLModel):
     section: str
 
-class ErrorEvent(BaseModel):
+class ErrorEvent(SQLModel):
     sensor_id : int
     timestamp: datetime
 
-class SensorBySection(BaseModel):
+class SensorBySection(SQLModel):
     id: int
     section: str
     status: str

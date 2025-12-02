@@ -1,151 +1,234 @@
-from fastapi import HTTPException, Response, status
-from .models import SensorIn, SensorOut, SensorStatusUpdate, SensorSectionUpdate, SensorWithMeasurements, ErrorEvent, SensorBySection
-from .database import sensors, status_changes, measurements
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+from fastapi import HTTPException, status
+from sqlmodel import Session, select
 
+from .models import (
+    SensorIn,
+    SensorOut,
+    SensorStatusUpdate,
+    SensorSectionUpdate,
+    SensorWithMeasurements,
+    Measurement,
+    MeasurementIn,
+    MeasurementOut,
+    StatusChange,
+    ErrorEvent,
+    SensorBySection,
+)
 
-def add_new_sensor(sensor_in : SensorIn):
-    new_id = sensors[-1]["id"]+1
-    sensor = SensorOut(id=new_id, **sensor_in.model_dump())
-    sensors.append(sensor.model_dump())
+#SENSORIT
+
+def add_new_sensor(session: Session, sensor_in : SensorIn) -> SensorOut:
+    sensor = SensorOut(**sensor_in.model_dump())
+    session.add(sensor)
+    session.commit()
+    session.refresh(sensor)
     return sensor
 
-def change_status_by_sensorId(sensor_id: int, update: SensorStatusUpdate):
-    sensor = next((s for s in sensors if s["id"] == sensor_id), None)
+def change_status_by_sensorId(
+    session: Session, sensor_id: int, update: SensorStatusUpdate) -> SensorOut:
+    sensor = session.get(SensorOut, sensor_id)
     if sensor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'sensor with id {sensor_id} not found.'
         )
-    old_status = sensor["status"]
+    
+    old_status = sensor.status
     new_status = update.status
 
-    sensor["status"] = new_status
+    sensor.status = new_status
 
-    status_changes.append(
-        {
-            "id": len(status_changes) +1,
-            "sensor_id": sensor_id,
-            "old_status": old_status,
-            "new_status": new_status,
-            "timestamp": datetime.now(),
-        }
+    status_change = StatusChange(
+
+            sensor_id=sensor_id,
+            old_status=old_status,
+            new_status=new_status,
+            timestamp=datetime.now(),
+    
     )
+
+    session.add(sensor)
+    session.add(status_change)
+    session.commit()
+    session.refresh(sensor)
+
     return sensor
 
 
-def change_section_by_sensorId(sensor_id: int, update: SensorSectionUpdate):
-    sensor = next((s for s in sensors if s["id"] == sensor_id), None)
+def change_section_by_sensorId(
+    session: Session, sensor_id: int, update: SensorSectionUpdate) -> SensorOut:
+    sensor = session.get(SensorOut, sensor_id)
     if sensor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'sensor with id {sensor_id} not found.'
         )
-    new_section = update.section
-    sensor["section"] = new_section
+    
+    sensor.section = update.section
+    session.add(sensor)
+    session.commit()
+    session.refresh(sensor)
+
 
     return sensor
 
-def get_sensors(status: str | None = None):
-    if status:
-        filtered = [s for s in sensors if s["status"] == status]
-        if not filtered:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f'No sensors found with status "{status}"'
-            )
-        return filtered
+def get_sensors(
+    session: Session, status_filter: Optional[str] = None) -> SensorOut:
+    query = select(SensorOut)
+    
+    if status_filter is not None:
+        query = query.where(SensorOut.status == status_filter)
+        
+    sensors = session.exec(query).all()
+
+    if status_filter is not None and not sensors:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'No sensors found with status "{status}"'
+        )
+        
+        
     return sensors
 
-def get_sensors_by_section(section: str):
-
-    filtered = [s for s in sensors if s["section"] == section]
-
-    result = []
-
-    for s in filtered:
-        last_measurement = max(
-            (m for m in measurements if m["sensor_id"] == s["id"]),
-            key=lambda m: m["timestamp"],
-            default=None
-        )
-        result.append({
-            "id": s["id"],
-            "section": s["section"],
-            "status": s["status"],
-            "last_temperature": last_measurement["temperature"] if last_measurement else None,
-            "last_timestamp": last_measurement["timestamp"] if last_measurement else None,
-        })
-    return result
-
 def get_sensordata_by_id(
+    session: Session,
     sensor_id: int, 
     limit: int = 10, 
     start: Optional[datetime] = None, 
-    end: Optional[datetime] = None):
+    end: Optional[datetime] = None,
+) -> SensorWithMeasurements:
     
-    sensor = next((s for s in sensors if s ["id"] == sensor_id), None)
+    sensor = session.get(SensorOut, sensor_id)
     if sensor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'sensor with id {sensor_id} not found.'
         )
-    
-    sensor_measurements = [
-        m for m in measurements if m["sensor_id"] == sensor_id
-    ]
+    query = select(Measurement).where(Measurement.sensor_id == sensor_id)
+   
     
     if start is not None and end is not None:
-        sensor_measurements = [
-            m for m in sensor_measurements if start <= m["timestamp"] <= end
-        ]
+        query = query.where(
+            Measurement.timestamp >= start,
+            Measurement.timestamp <= end,
+        ).order_by(Measurement.timestamp.desc())
     else:
         #Muuten uusimmat "limit" mittausta
-        sensor_measurements = sorted(
-            sensor_measurements,
-            key=lambda m: m["timestamp"],
-            reverse=True
-        )[:limit]
+        query = query.order_by(Measurement.timestamp.desc()).limit(limit)
+
+    measurements = session.exec(query).all()
 
     return SensorWithMeasurements(
-        **sensor,
-        measurements=sensor_measurements,
+        id=sensor.id,
+        name=sensor.name,
+        section=sensor.section,
+        status=sensor.status,
+        measurements=measurements,
     )
 
 
-def get_statuschanges_by_sensorId(sensor_id: int):
-    sensor = next((s for s in sensors if s["id"] == sensor_id), None)
+# SECTIONS
+
+
+def get_sensors_by_section(session: Session, section: str) -> List[SensorBySection]:
+
+    sensors_in_section = session.exec(
+        select(SensorOut).where(SensorOut.section == section)
+    ).all()
+
+    result: List[SensorBySection] = []
+
+    for s in sensors_in_section:
+        last_measurement = session.exec(
+            select(Measurement)
+            .where(Measurement.sensor_id == s.id)
+            .order_by(Measurement.timestamp.desc())
+            .limit(1)
+        ).first()
+
+        result.append(
+            SensorBySection(
+                id=s.id,
+                section=s.section,
+                status=s.status,
+                last_temperature=last_measurement.temperature if last_measurement else None,
+                last_timestamp=last_measurement.timestamp if last_measurement else None,
+            )
+        )
+    return result
+
+
+
+#STATUS-CHANGES
+
+
+def get_statuschanges_by_sensorId(
+        session: Session, sensor_id: int) -> List[StatusChange]:
+    
+    sensor = session.get(SensorOut, sensor_id)
     if sensor is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f'sensor with id {sensor_id} not found.'
         )
-    changes = [
-        c for c in status_changes if c["sensor_id"] == sensor_id
-    ]
+    
+    changes = session.exec(
+        select(StatusChange).where(StatusChange.sensor_id == sensor_id)
+    ).all()
+
     return changes
 
-def get_error_events(sensor_id: int | None = None):
 
-    events = [
-        c for c in status_changes if c["new_status"] == "error"
-    ]
+#ERROR-EVENTIT (Graafia varten)
+
+def get_error_events(
+    session: Session, sensor_id: Optional[int] = None) -> List[ErrorEvent]:
+
+    query = select(StatusChange).where(StatusChange.new_status == "error")
 
     if sensor_id is not None:
-        events = [c for c in events if c["sensor_id"] == sensor_id]
+        query = query.where(StatusChange.sensor_id == sensor_id)
+    
+    rows = session.exec(query).all()
 
     return [
-        ErrorEvent(sensor_id=e["sensor_id"],timestamp=e["timestamp"])
-        for e in events
+        ErrorEvent(sensor_id=r.sensor_id, timestamp=r.timestamp)
+        for r in rows
     ]
 
-def delete_measurement_by_id(measurement_id: int):
-    measurement_index = -1
-    for i, m in enumerate(measurements):
-        if m["id"] == measurement_id:
-            measurement_index = i
-            break
-    if measurement_index == -1:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f'measurement with id {measurement_id} not found.'
-        )
-    del measurements[measurement_index]
+
+#MEASUREMENTS
+
+def create_measurement(
+        session: Session, measurement_in: MeasurementIn) -> MeasurementOut:
+    ts = measurement_in.timestamp or datetime.now()
+
+    db_measurement = Measurement(
+        sensor_id=measurement_in.sensor_id,
+        temperature=measurement_in.temperature,
+        timestamp=ts,
+    )
+
+    session.add(db_measurement)
+    session.commit()
+    session.refresh(db_measurement)
+
+    return MeasurementOut(
+        id=db_measurement.id,
+        sensor_id=db_measurement.sensor_id,
+        temperature=db_measurement.temperature,
+        timestamp=db_measurement.timestamp,
+    )
+
+
+def delete_measurement_by_id(
+    session: Session, measurement_id: int) -> None:
     
-    return Response(status_code=status.HTTP_204_NO_CONTENT) 
+    measurement = session.get(Measurement, measurement_id)
+    if measurement is None:
+        raise HTTPException(
+         status_code=status.HTTP_404_NOT_FOUND,
+         detail=f'Measurement with id {measurement_id} not found.',   
+        )
+
+    session.delete(measurement)
+    session.commit()
+    raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
