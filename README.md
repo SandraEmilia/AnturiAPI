@@ -5,16 +5,16 @@ AnturiAPI on FastAPI-pohjainen REST-rajapinta, jonka avulla voidaan hallita antu
 -----------------------------------------------------------------------------------------------------------------------------------
 
 **Käytetyt teknologiat:**
-- Python 3.13
-- FastAPI 
-- Uvicorn
-- SQLModel
-- SQLite
-- Pydantic
+- Python 3.13     
+- FastAPI      Rest-rajapinnan toteutus
+- Uvicorn      Palvelin FastAPI sovellukselle      
+- SQLModel     ORM + Pydantic yhdistelmä tietokantamalleihin      
+- SQLite       Kevyt tietokanta (sensors.db)
+- Pydantic     Datan validointi ja serialisointi
 
-- Venv
-- Git & Github
-- Vscode
+- Venv            Erillinen kehitysympäristö
+- Git & Github    Versionhallinta
+- Vscode          Ohjelmointieditori
 
 ------------------------------------------------------------------------------------------------------------------------------------
 
@@ -93,6 +93,10 @@ http://127.0.0.1:8000/docs
 
 
 **-GET/stats/error-events:** Listaa kaikki virhetilanteet graafia varten tai suodata yksittäisen sensorin mukaan
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+© 2025 Sandra Nurmela
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
