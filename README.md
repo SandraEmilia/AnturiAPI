@@ -22,7 +22,7 @@ AnturiAPI on FastAPI-pohjainen REST-rajapinta, jonka avulla voidaan hallita antu
 
 **1. Kloonaa projekti**
 - Avaa terminaali ja siirry kansioon, johon haluat kloonata koodin
-- Suorita kloonaus: git clone TÄHÄN LINKKI
+- Suorita kloonaus: git clone https://github.com/SandraEmilia/AnturiAPI.git
 - Siirry kloonattuun kansioon: cd AnturiAPI
   
 **2. Luo ja aktivoi virtuaaliympäristö**
