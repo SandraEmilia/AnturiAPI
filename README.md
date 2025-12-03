@@ -6,15 +6,15 @@ AnturiAPI on FastAPI-pohjainen REST-rajapinta, jonka avulla voidaan hallita antu
 
 **Käytetyt teknologiat:**
 - Python 3.13     
-- FastAPI      Rest-rajapinnan toteutus
-- Uvicorn      Palvelin FastAPI sovellukselle      
-- SQLModel     ORM + Pydantic yhdistelmä tietokantamalleihin      
-- SQLite       Kevyt tietokanta (sensors.db)
-- Pydantic     Datan validointi ja serialisointi
+- FastAPI  -  Rest-rajapinnan toteutus
+- Uvicorn  -  Palvelin FastAPI sovellukselle      
+- SQLModel  -  ORM + Pydantic yhdistelmä tietokantamalleihin      
+- SQLite  -  Kevyt tietokanta (sensors.db)
+- Pydantic  -  Datan validointi ja serialisointi
 
-- Venv            Erillinen kehitysympäristö
-- Git & Github    Versionhallinta
-- Vscode          Ohjelmointieditori
+- Venv  -  Erillinen kehitysympäristö
+- Git & Github  -  Versionhallinta
+- Vscode  -  Ohjelmointieditori
 
 ------------------------------------------------------------------------------------------------------------------------------------
 
