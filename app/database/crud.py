@@ -199,6 +199,20 @@ def get_error_events(
 
 def create_measurement(
         session: Session, measurement_in: MeasurementIn) -> MeasurementOut:
+    sensor = session.get(SensorOut, measurement_in.sensor_id)
+    if sensor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Sensor with id {measurement_in.sensor_id} not found.'
+        )
+    
+    if sensor.status == "error":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Measurement cannot be added because the sensor is in 'error' state."
+        )
+    
+    
     ts = measurement_in.timestamp or datetime.now()
 
     db_measurement = Measurement(
