@@ -16,13 +16,20 @@ Ennen endpointtien suunnittelua, mietin mitkä resurssit kannattaa laittaa omiin
 
 ### Sensors endpointit
 POST/sensors - Lisätään uusi sensori, sensorille asetetaan nimi (esim. sensor1), section (esim. A1) ja status (esim. online). Uusi sensori lisätään sensors-tauluun.
-GET/sensors - Listaa joko kaikki anturit (Näytetään sensorin tunniste, lohko ja tila) tai voidaan suodattaa statuksen perusteella, jolloin ohjelma listaa kaikki sensorit, jotka ovat esim. offline tilassa. 
+
+GET/sensors - Listaa joko kaikki anturit (Näytetään sensorin tunniste, lohko ja tila) tai voidaan suodattaa statuksen perusteella, jolloin ohjelma listaa kaikki sensorit, jotka ovat esim. offline tilassa.
+
 PATCH/sensors/{sensor_id}/status - Voidaan muuttaa sensorin tilaa syöttämällä sensorin id ja haluttu uusi tila string muodossa. esim. online -> offline. Tilamuutos tallennetaan status_changes tauluun.
-PATCH/sensors/{sensor_id}/section - Listaa tietyn lohkon kaikki sensorit. Sensorista tuodaan tunniste, lohko, tila, viimeisin mittaus sekä aikaleima. 
+
+PATCH/sensors/{sensor_id}/section - Voidaan muuttaa lohkoa, johon sensori kuuluu, sensorin id:n perusteella.
+
+GET/sensors/by-section - Listaa tietyn lohkon kaikki sensorit. Sensorista tuodaan tunniste, lohko, tila, viimeisin mittaus sekä aikaleima.
+
 GET/sensors/{sensor_id} - Haetaan yksittäisen anturin kaikki tiedot id:n perusteella. Oletuksena näytetään 10 viimeisintä mittatulosta tai query parametrinä voidaan antaa start ja end datetime, jonka väliltä mittaukset näytetään. 
 
 ### Measurements endpointit
 POST/measurements - Kyseinen endpoint on luotu ainoastaan ohjelman testausta varten. Todellisuudessa sensorit lähettäisivät mittausdataa suoraan selaimeen tietyin väliajoin, mutta testausta varten oli pakko luoda endpoint, jolla mittausdatan luomisen voi tehdä manuaalisesti. Olin alunperin ajatellut, että lämpötila ja timestamp lisätään vain siinä kohtaa kun luodaan uusi sensori, mutta sillä samalle sensorille pitää saada luotua useampi mittaustulos kyseinen ratkaisu ei olisi toiminut, vaan tarvittiin endpoint, jonka avulla voidaan tietylle sensorille lisätä niin monta mittatulosta, kuin halutaan. Jos mittaustulosta yritetään lisätä sensorille, joka on "error"-tilassa, mittausta ei voida lisätä, sillä ohjeistuksessa sanottiin, että virhetilassa anturi ei lähetä lämpötilatietoja. 
+
 DELETE/measurements/{measurement_id} - Poistetaan yksittäinen mittaustulos id:n perusteella.
 
 ### Status-changes endpoint
